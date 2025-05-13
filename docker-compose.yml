@@ -1,0 +1,137 @@
+version: "3"
+
+services:
+  # MySQL for Auth Service
+  auth-db:
+    image: mysql:8.0
+    container_name: auth-db
+    restart: always
+    ports:
+      - "13306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=auth_db
+      - MYSQL_USER=auth_user
+      - MYSQL_PASSWORD=123456
+    volumes:
+      - auth-db-data:/var/lib/mysql
+      - ./database/auth-init.sql:/docker-entrypoint-initdb.d/auth-init.sql
+    networks:
+      - app-network
+
+  # MySQL for Vehicle Service
+  vehicle-db:
+    image: mysql:8.0
+    container_name: vehicle-db
+    restart: always
+    ports:
+      - "13307:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=vehicle_db
+      - MYSQL_USER=vehicle_user
+      - MYSQL_PASSWORD=123456
+    volumes:
+      - vehicle-db-data:/var/lib/mysql
+      - ./database/vehicle-init.sql:/docker-entrypoint-initdb.d/vehicle-init.sql
+    networks:
+      - app-network
+
+  # Auth Service
+  auth-service:
+    image: node:16-alpine
+    container_name: auth-service
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_HOST=auth-db
+      - DB_PORT=3306
+      - DB_USER=auth_user
+      - DB_PASSWORD=123456
+      - DB_NAME=auth_db
+      - JWT_SECRET=your_jwt_secret_key
+      - PORT=3001
+    volumes:
+      - ./auth-service:/app
+    working_dir: /app
+    command: >
+      sh -c "npm install && npm start"
+    depends_on:
+      - auth-db
+    networks:
+      - app-network
+
+  # Vehicle Registration Service
+  vehicle-service:
+    image: node:16-alpine
+    container_name: vehicle-service
+    restart: always
+    ports:
+      - "3002:3002"
+    environment:
+      - DB_HOST=vehicle-db
+      - DB_PORT=3306
+      - DB_USER=vehicle_user
+      - DB_PASSWORD=123456
+      - DB_NAME=vehicle_db
+      - JWT_SECRET=your_jwt_secret_key
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PORT=3002
+    volumes:
+      - ./vehicle-service:/app
+    working_dir: /app
+    command: >
+      sh -c "npm install && npm start"
+    depends_on:
+      - vehicle-db
+      - auth-service
+    networks:
+      - app-network
+
+  # API Gateway
+  api-gateway:
+    image: node:16-alpine
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - VEHICLE_SERVICE_URL=http://vehicle-service:3002
+      - JWT_SECRET=your_jwt_secret_key
+      - PORT=3000
+    volumes:
+      - ./api-gateway:/app
+    working_dir: /app
+    command: >
+      sh -c "npm install && npm start"
+    depends_on:
+      - auth-service
+      - vehicle-service
+    networks:
+      - app-network
+
+  # Frontend
+  frontend:
+    image: nginx:alpine
+    container_name: frontend
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    depends_on:
+      - api-gateway
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  auth-db-data:
+    driver: local
+  vehicle-db-data:
+    driver: local
