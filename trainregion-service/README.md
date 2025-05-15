@@ -2,6 +2,17 @@
 
 TrainRegion Service là một microservice trong hệ thống quản lý biển số xe, có nhiệm vụ huấn luyện mô hình YOLOv8 để nhận dạng vùng chứa biển số xe trong ảnh.
 
+## Tải model YOLOv8
+
+Do kích thước lớn, các file model không được lưu trữ trong repository. Bạn cần tải model YOLOv8 từ trang chủ Ultralytics:
+
+```bash
+# Tải model YOLOv8x
+wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x.pt
+# Hoặc sử dụng Python
+python -c "from ultralytics import YOLO; YOLO('yolov8x.pt')"
+```
+
 ## Cài đặt
 
 ### Yêu cầu
