@@ -1,5 +1,3 @@
-# Tạo file .gitignore
-@"
 # Dependencies
 node_modules/
 */node_modules/
@@ -70,10 +68,17 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+.venv/
+venv/
+ENV/
+
+# YOLOv8 specific
+trainregion-service/runs/
+*.pt
+trainregion-service/yolov8x.pt
 
 # IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
-"@ | Out-File -FilePath ".gitignore" -Encoding utf8
