@@ -1,0 +1,16 @@
+flask==2.3.3
+flask-cors==4.0.0
+sqlalchemy==2.0.20
+pymysql==1.1.0
+cryptography==41.0.7
+ultralytics
+pillow
+numpy
+python-dotenv==1.0.0
+torch
+torchvision
+opencv-python
+matplotlib
+pyyaml
+gunicorn==21.2.0
+requests==2.31.0

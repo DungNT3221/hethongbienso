@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Training - Hệ thống nhận diện biển số xe</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+        }
+        .sidebar .nav-link {
+            color: #fff;
+            padding: 15px 20px;
+        }
+        .sidebar .nav-link:hover {
+            background-color: #495057;
+            color: #fff;
+        }
+        .sidebar .nav-link.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .main-content {
+            padding: 20px;
+        }
+        .status-badge {
+            font-size: 0.8em;
+        }
+        .model-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .training-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-md-block sidebar">
+                <div class="position-sticky pt-3">
+                    <h5 class="text-white text-center mb-4">Hệ thống quản lý</h5>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="dashboard.html">
+                                <i class="fas fa-tachometer-alt me-2"></i>Tổng quan
+                            </a>
+                        </li>
+                        <li class="nav-item" id="add-vehicle-nav">
+                            <a class="nav-link" href="add-vehicle.html">
+                                <i class="fas fa-plus me-2"></i>Thêm xe mới
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="ai-training.html">
+                                <i class="fas fa-brain me-2"></i>Huấn luyện AI
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="ai-predict.html">
+                                <i class="fas fa-search me-2"></i>Dự đoán AI
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="logout()">
+                                <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="mt-4 px-3">
+                        <div class="text-white-50 small">
+                            <div id="user-info-sidebar"></div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-10 ms-sm-auto main-content">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Huấn luyện AI</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button type="button" class="btn btn-primary" onclick="refreshData()">
+                            <i class="fas fa-sync-alt me-1"></i>Làm mới
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dataset Upload Section -->
+                <div class="training-form">
+                    <h4>Upload Dataset</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <!-- Upload Images Tab -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Upload Ảnh (Auto-labeling)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="upload-images-form">
+                                        <div class="mb-3">
+                                            <label for="dataset-name" class="form-label">Tên Dataset</label>
+                                            <input type="text" class="form-control" id="dataset-name" required>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="labeling-method" class="form-label">Phương pháp labeling</label>
+                                            <select class="form-select" id="labeling-method">
+                                                <option value="auto">Auto-labeling (AI tự động)</option>
+                                                <option value="template">Template-based (Vị trí cố định)</option>
+                                                <option value="manual">Manual (Tự label sau)</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="confidence-section">
+                                            <label for="confidence-threshold" class="form-label">Confidence Threshold</label>
+                                            <input type="range" class="form-range" id="confidence-threshold" min="0.1" max="0.9" step="0.1" value="0.3">
+                                            <small class="text-muted">Giá trị: <span id="confidence-value">0.3</span></small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="image-files" class="form-label">Chọn ảnh</label>
+                                            <input type="file" class="form-control" id="image-files" multiple accept="image/*" required>
+                                            <small class="text-muted">Chọn nhiều ảnh định dạng JPG, PNG</small>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-upload me-1"></i>Upload Dataset
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <!-- Upload ZIP Tab -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Upload ZIP Dataset</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="upload-zip-form">
+                                        <div class="mb-3">
+                                            <label for="zip-dataset-name" class="form-label">Tên Dataset</label>
+                                            <input type="text" class="form-control" id="zip-dataset-name" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="zip-dataset-description" class="form-label">Mô tả (tùy chọn)</label>
+                                            <textarea class="form-control" id="zip-dataset-description" rows="2"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="zip-file" class="form-label">Chọn file ZIP</label>
+                                            <input type="file" class="form-control" id="zip-file" accept=".zip" required>
+                                            <small class="text-muted">
+                                                ZIP phải chứa: images/, labels/, classes.txt
+                                            </small>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-file-archive me-1"></i>Upload ZIP
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Datasets List -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Datasets</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="datasets-container">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Form -->
+                <div class="training-form">
+                    <h4>Tạo Model Mới</h4>
+                    <form id="training-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="model-name" class="form-label">Tên Model</label>
+                                    <input type="text" class="form-control" id="model-name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dataset-select" class="form-label">Chọn Dataset</label>
+                                    <select class="form-select" id="dataset-select" required>
+                                        <option value="">Chọn dataset để training</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="model-type" class="form-label">Loại Model</label>
+                                    <select class="form-select" id="model-type" required>
+                                        <option value="">Chọn loại model</option>
+                                        <option value="yolov8n">YOLOv8 Nano (Nhanh)</option>
+                                        <option value="yolov8s">YOLOv8 Small</option>
+                                        <option value="yolov8m">YOLOv8 Medium</option>
+                                        <option value="yolov8l">YOLOv8 Large</option>
+                                        <option value="yolov8x">YOLOv8 Extra Large (Chính xác)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="epochs" class="form-label">Epochs</label>
+                                    <input type="number" class="form-control" id="epochs" min="1" max="1000" value="50" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="batch-size" class="form-label">Batch Size</label>
+                                    <input type="number" class="form-control" id="batch-size" min="1" max="64" value="8" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="learning-rate" class="form-label">Learning Rate</label>
+                                    <input type="number" class="form-control" id="learning-rate" min="0.001" max="0.1" step="0.001" value="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-play me-1"></i>Bắt đầu Training
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Dataset Preview Modal -->
+                <div class="modal fade" id="datasetPreviewModal" tabindex="-1" aria-labelledby="datasetPreviewModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="datasetPreviewModalLabel">
+                                    <i class="fas fa-images me-2"></i>Dataset Preview
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="datasetPreviewLoading" class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Loading dataset preview...</p>
+                                </div>
+
+                                <div id="datasetPreviewContent" class="d-none">
+                                    <div class="row mb-3">
+                                        <div class="col-md-12">
+                                            <div class="alert alert-info">
+                                                <strong id="datasetPreviewName"></strong> -
+                                                <span id="datasetPreviewStats"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-12">
+                                            <button id="createDatasetBtn" class="btn btn-primary" style="display: none;">
+                                                <i class="fas fa-plus me-1"></i>Tạo Dataset Mới từ Ảnh Đã Chọn
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="row" id="imageGrid">
+                                        <!-- Images will be loaded here -->
+                                        <ul class="list-group"></ul>
+                                    </div>
+                                </div>
+
+                                <div id="datasetPreviewError" class="d-none">
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <span id="datasetPreviewErrorMessage"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Results Modal -->
+                <div class="modal fade" id="trainingResultModal" tabindex="-1" aria-labelledby="trainingResultModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="trainingResultModalLabel">
+                                    <i class="fas fa-chart-line me-2"></i>Training Completed Successfully
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" id="trainingResultContent">
+                                <!-- Content will be populated by JavaScript -->
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-1"></i>Discard Results
+                                </button>
+                                <button type="button" class="btn btn-success" id="saveModelBtn">
+                                    <i class="fas fa-save me-1"></i>Save to Database
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom JS -->
+    <script src="js/api.js"></script>
+    <script>
+        // Check authentication
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user) {
+            window.location.href = 'login.html';
+        }
+
+        // Update UI based on user role
+        document.getElementById("user-info-sidebar").innerHTML = `
+            <strong>${user.fullName}</strong><br>
+            <small>${user.role === "admin" ? "Quản trị viên" : "Cảnh sát"}</small>
+        `;
+
+        // Only show Add Vehicle button for admin
+        if (user.role !== "admin") {
+            document.getElementById("add-vehicle-nav").style.display = "none";
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDatasets();
+
+            // Setup confidence threshold display
+            const confidenceSlider = document.getElementById('confidence-threshold');
+            const confidenceValue = document.getElementById('confidence-value');
+            confidenceSlider.addEventListener('input', function() {
+                confidenceValue.textContent = this.value;
+            });
+
+            // Setup labeling method change
+            document.getElementById('labeling-method').addEventListener('change', function() {
+                const confidenceSection = document.getElementById('confidence-section');
+                if (this.value === 'auto') {
+                    confidenceSection.style.display = 'block';
+                } else {
+                    confidenceSection.style.display = 'none';
+                }
+            });
+
+            // Setup modal close buttons - Discard model when closing
+            document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(button => {
+                button.addEventListener('click', function() {
+                    discardModelAndCloseModal();
+                });
+            });
+        });
+
+        // Upload images form submission
+        document.getElementById('upload-images-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const files = document.getElementById('image-files').files;
+
+            if (files.length === 0) {
+                alert('Vui lòng chọn ít nhất một ảnh');
+                return;
+            }
+
+            // Add files
+            for (let file of files) {
+                formData.append('images', file);
+            }
+
+            // Add other data
+            formData.append('name', document.getElementById('dataset-name').value);
+            formData.append('description', ''); // Empty description for images upload
+            formData.append('method', document.getElementById('labeling-method').value);
+            formData.append('confidence_threshold', document.getElementById('confidence-threshold').value);
+
+            try {
+                const result = await API.dataset.uploadImages(formData);
+
+                if (result.success) {
+                    alert(`Dataset uploaded successfully! ${result.labeling_result.labeled_images}/${result.labeling_result.total_images} images labeled.`);
+                    document.getElementById('upload-images-form').reset();
+                    loadDatasets();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error uploading dataset: ' + error.message);
+            }
+        });
+
+        // Upload ZIP form submission
+        document.getElementById('upload-zip-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const file = document.getElementById('zip-file').files[0];
+
+            if (!file) {
+                alert('Vui lòng chọn file ZIP');
+                return;
+            }
+
+            formData.append('dataset', file);
+            formData.append('name', document.getElementById('zip-dataset-name').value);
+            formData.append('description', document.getElementById('zip-dataset-description').value);
+
+            try {
+                const result = await API.dataset.uploadZip(formData);
+
+                if (result.success) {
+                    alert('ZIP dataset uploaded successfully!');
+                    document.getElementById('upload-zip-form').reset();
+                    loadDatasets();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error uploading ZIP: ' + error.message);
+            }
+        });
+
+        // Training form submission
+        document.getElementById('training-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = {
+                name: document.getElementById('model-name').value,
+                dataset_id: parseInt(document.getElementById('dataset-select').value),
+                model_type: document.getElementById('model-type').value,
+                epochs: parseInt(document.getElementById('epochs').value),
+                batch_size: parseInt(document.getElementById('batch-size').value),
+                learning_rate: parseFloat(document.getElementById('learning-rate').value)
+            };
+
+            try {
+                const result = await API.training.startTraining(formData);
+
+                if (result.success) {
+                    alert('Training started successfully! Please wait for completion...');
+                    document.getElementById('training-form').reset();
+
+                    // Start polling for training completion
+                    pollTrainingStatus(result.training_job.id);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error starting training: ' + error.message);
+            }
+        });
+
+        // Save model to database
+        document.getElementById('saveModelBtn').addEventListener('click', async function() {
+            const jobId = this.getAttribute('data-job-id');
+            const modelName = document.getElementById('modelNameInput').value.trim();
+            const notes = document.getElementById('modelNotesInput').value.trim();
+
+            if (!modelName) {
+                alert('Please enter a model name');
+                return;
+            }
+
+            try {
+                const result = await API.training.saveModel(jobId, modelName, notes);
+
+                if (result.success) {
+                    alert(`✅ Model "${modelName}" saved to database successfully!\n\nModel ID: ${result.model_id}`);
+
+                    // Close modal
+                    closeTrainingModal();
+                } else {
+                    alert('Error saving model: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error saving model: ' + error.message);
+            }
+        });
+
+        // Load datasets
+        async function loadDatasets() {
+            try {
+                console.log('Loading datasets...');
+                const result = await API.dataset.getDatasets();
+                console.log('Load datasets result:', result);
+
+                if (result.success) {
+                    displayDatasets(result.datasets);
+                    updateDatasetSelect(result.datasets);
+                } else {
+                    const errorMessage = result.error || 'Unknown error occurred';
+                    console.error('Error loading datasets:', errorMessage);
+                    document.getElementById('datasets-container').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Error loading datasets: ${errorMessage}
+                            <button class="btn btn-sm btn-outline-danger ms-3" onclick="loadDatasets()">
+                                <i class="fas fa-sync-alt me-1"></i>Retry
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error in loadDatasets:', error);
+                document.getElementById('datasets-container').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error loading datasets: ${error.message}
+                        <button class="btn btn-sm btn-outline-danger ms-3" onclick="loadDatasets()">
+                            <i class="fas fa-sync-alt me-1"></i>Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Poll training status
+        async function pollTrainingStatus(jobId) {
+            if (!jobId) {
+                console.error('Invalid job ID for polling');
+                return;
+            }
+
+            const pollInterval = setInterval(async () => {
+                try {
+                    const result = await API.training.getTrainingStatus(jobId);
+
+                    if (result.success) {
+                        const job = result.training_job;
+
+                        if (job.status === 'completed') {
+                            clearInterval(pollInterval);
+                            showTrainingResults(job);
+                        } else if (job.status === 'failed') {
+                            clearInterval(pollInterval);
+                            alert('Training failed: ' + (job.error_message || 'Unknown error'));
+                        }
+                    } else {
+                        console.error('Error polling job status:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Error polling training status:', error);
+                }
+            }, 5000); // Poll every 5 seconds
+        }
+
+        // Show training results in modal
+        function showTrainingResults(job) {
+            const modalContent = document.getElementById('trainingResultContent');
+
+            modalContent.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle me-2"></i>Training Information</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Job Name:</strong></td><td>${job.name || 'N/A'}</td></tr>
+                            <tr><td><strong>Model Type:</strong></td><td>${job.model_type}</td></tr>
+                            <tr><td><strong>Epochs:</strong></td><td>${job.epochs}</td></tr>
+                            <tr><td><strong>Batch Size:</strong></td><td>${job.batch_size}</td></tr>
+                            <tr><td><strong>Training Time:</strong></td><td>${job.training_time ? job.training_time.toFixed(2) + 's' : 'N/A'}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-bar me-2"></i>Performance Metrics</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>mAP50:</strong></td><td>${job.best_map50 ? job.best_map50.toFixed(3) : 'N/A'}</td></tr>
+                            <tr><td><strong>mAP95:</strong></td><td>${job.best_map95 ? job.best_map95.toFixed(3) : 'N/A'}</td></tr>
+                            <tr><td><strong>Final Epoch:</strong></td><td>${job.current_epoch || 'N/A'}</td></tr>
+                            <tr><td><strong>Progress:</strong></td><td>${job.progress ? job.progress.toFixed(1) + '%' : 'N/A'}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <h6><i class="fas fa-clipboard-check me-2"></i>Quality Assessment</h6>
+                    <div class="alert ${job.best_map50 >= 0.8 ? 'alert-success' : job.best_map50 >= 0.6 ? 'alert-warning' : 'alert-danger'}">
+                        ${job.best_map50 >= 0.8 ? '✅ Excellent performance (mAP50 ≥ 0.8)' :
+                          job.best_map50 >= 0.6 ? '⚠️ Good performance (mAP50 ≥ 0.6)' :
+                          '❌ Poor performance (mAP50 < 0.6) - Consider retraining'}
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label for="modelNameInput" class="form-label"><strong>Model Name:</strong></label>
+                    <input type="text" class="form-control" id="modelNameInput" value="${job.name || 'model'}_v1.0" required>
+                </div>
+
+                <div class="mt-3">
+                    <label for="modelNotesInput" class="form-label"><strong>Notes (optional):</strong></label>
+                    <textarea class="form-control" id="modelNotesInput" rows="3" placeholder="Add any notes about this model..."></textarea>
+                </div>
+            `;
+
+            // Store job ID for save action
+            document.getElementById('saveModelBtn').setAttribute('data-job-id', job.id);
+
+            // Show modal
+            const modalElement = document.getElementById('trainingResultModal');
+            modalElement.style.display = 'block';
+            modalElement.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+
+        // Display datasets
+        function displayDatasets(datasets) {
+            const container = document.getElementById('datasets-container');
+
+            if (datasets.length === 0) {
+                container.innerHTML = '<p class="text-muted">No datasets found.</p>';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-striped"><thead><tr>';
+            html += '<th>ID</th><th>Name</th><th>Type</th><th>Images</th><th>Labeling</th><th>Status</th><th>Created</th><th>Actions</th>';
+            html += '</tr></thead><tbody>';
+
+            datasets.forEach(dataset => {
+                const statusClass = {
+                    'uploaded': 'warning',
+                    'processing': 'info',
+                    'ready': 'success',
+                    'error': 'danger'
+                }[dataset.status] || 'secondary';
+
+                const labelingBadge = dataset.has_labels ?
+                    `<span class="badge bg-success">${dataset.labeling_method}</span>` :
+                    '<span class="badge bg-warning">No labels</span>';
+
+                html += `<tr>
+                    <td>${dataset.id}</td>
+                    <td>${dataset.name}</td>
+                    <td><span class="badge bg-info">${dataset.upload_type}</span></td>
+                    <td>${dataset.image_count}</td>
+                    <td>${labelingBadge}</td>
+                    <td><span class="badge bg-${statusClass}">${dataset.status}</span></td>
+                    <td>${new Date(dataset.created_at).toLocaleString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info me-1" onclick="previewDataset(${dataset.id}, '${dataset.name}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDataset(${dataset.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // Update dataset select dropdown
+        function updateDatasetSelect(datasets) {
+            const select = document.getElementById('dataset-select');
+
+            // Clear existing options except first one
+            select.innerHTML = '<option value="">Chọn dataset để training</option>';
+
+            // Add ready datasets
+            datasets.filter(d => d.status === 'ready').forEach(dataset => {
+                const option = document.createElement('option');
+                option.value = dataset.id;
+                option.textContent = `${dataset.name} (${dataset.image_count} images, ${dataset.labeling_method})`;
+                select.appendChild(option);
+            });
+        }
+
+        // Delete dataset
+        async function deleteDataset(datasetId) {
+            if (!confirm('Bạn có chắc muốn xóa dataset này?')) {
+                return;
+            }
+
+            try {
+                const result = await API.dataset.deleteDataset(datasetId);
+
+                if (result.success) {
+                    alert('Dataset deleted successfully!');
+                    loadDatasets();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error deleting dataset: ' + error.message);
+            }
+        }
+
+        // Refresh data
+        function refreshData() {
+            loadDatasets();
+        }
+
+        // Close modal function
+        function closeTrainingModal() {
+            const modalElement = document.getElementById('trainingResultModal');
+            modalElement.style.display = 'none';
+            modalElement.classList.remove('show');
+            document.body.classList.remove('modal-open');
+        }
+
+        // Discard model and close modal
+        async function discardModelAndCloseModal() {
+            const saveBtn = document.getElementById('saveModelBtn');
+            const jobId = saveBtn.getAttribute('data-job-id');
+
+            if (jobId) {
+                try {
+                    const result = await API.training.discardModel(jobId);
+
+                    if (result.success) {
+                        console.log('Model discarded successfully');
+                    } else {
+                        console.error('Error discarding model:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Error discarding model:', error);
+                }
+            }
+
+            closeTrainingModal();
+        }
+
+        // Preview dataset
+        async function previewDataset(datasetId, datasetName) {
+            console.log(`[Preview] Starting preview for dataset ID: ${datasetId}, Name: ${datasetName}`);
+            try {
+                // Show loading state
+                const loadingEl = document.getElementById('datasetPreviewLoading');
+                const contentEl = document.getElementById('datasetPreviewContent');
+                const errorEl = document.getElementById('datasetPreviewError');
+                
+                loadingEl.classList.remove('d-none');
+                contentEl.classList.add('d-none');
+                errorEl.classList.add('d-none');
+                console.log('[Preview] Loading state visible.');
+
+                // Open the modal first
+                const previewModalElement = document.getElementById('datasetPreviewModal');
+                const previewModal = new bootstrap.Modal(previewModalElement);
+                previewModal.show();
+                console.log('[Preview] Modal shown.');
+
+                const result = await API.dataset.getDatasetPreview(datasetId);
+                if (!result.success) {
+                    throw new Error(result.error || 'Lỗi không xác định khi tải preview dataset');
+                }
+                console.log('[Preview] Dataset preview data fetched successfully.', result);
+
+                // Populate modal header info
+                document.getElementById('datasetPreviewName').textContent = result.dataset.name;
+                document.getElementById('datasetPreviewStats').textContent = 
+                    `Tổng số ảnh: ${result.dataset.image_count}, Xem trước: ${result.dataset.preview_count} ảnh`;
+
+                // Render preview images
+                const previewImagesContainer = document.getElementById('imageGrid').querySelector('ul');
+                previewImagesContainer.innerHTML = ''; // Clear previous content
+
+                const baseTrainRegionUrl = "http://localhost:3003"; // Ensure this matches your TrainRegion Service URL
+
+                if (result.images && result.images.length > 0) {
+                    result.images.forEach(image => {
+                        // Use the baseTrainRegionUrl to construct the full image URL
+                        const imageUrl = `${baseTrainRegionUrl}${image.image_url}`;
+                        console.log(`[Preview] Rendering image: ${imageUrl}`);
+
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item d-flex align-items-center mb-2';
+                        listItem.innerHTML = `
+                            <div class="me-3">
+                                <input type="checkbox" class="form-check-input image-select" 
+                                    data-image-url="${imageUrl}"
+                                    data-label-content="${image.raw_label_content || ''}"
+                                    onchange="updateCreateDatasetButton()">
+                            </div>
+                            <div class="me-3"><strong>${result.images.indexOf(image) + 1}.</strong></div>
+                            <div class="row flex-grow-1">
+                                <div class="col-md-6">
+                                    <img src="${imageUrl}" class="img-fluid rounded" alt="Dataset Image" style="max-height: 200px; object-fit: contain;">
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Label Content:</h6>
+                                    <pre class="bg-light p-2 rounded" style="max-height: 150px; overflow-y: auto; font-size: 0.8em;">${image.raw_label_content || 'No label content available.'}</pre>
+                                </div>
+                            </div>
+                        `;
+                        previewImagesContainer.appendChild(listItem);
+                    });
+
+                    // Show create dataset button
+                    document.getElementById('createDatasetBtn').style.display = 'block';
+                } else {
+                    previewImagesContainer.innerHTML = '<p>No images to preview for this dataset.</p>';
+                    console.log('[Preview] No images to preview.');
+                    document.getElementById('createDatasetBtn').style.display = 'none';
+                }
+
+                // Hide loading and show content
+                loadingEl.classList.add('d-none');
+                contentEl.classList.remove('d-none');
+                console.log('[Preview] Content visible, loading state hidden.');
+
+            } catch (error) {
+                console.error('Preview error:', error);
+                const loadingEl = document.getElementById('datasetPreviewLoading');
+                const contentEl = document.getElementById('datasetPreviewContent');
+                const errorEl = document.getElementById('datasetPreviewError');
+
+                loadingEl.classList.add('d-none');
+                contentEl.classList.add('d-none');
+                errorEl.classList.remove('d-none');
+                document.getElementById('datasetPreviewErrorMessage').textContent = error.message;
+                console.log('[Preview] Error state visible, loading and content hidden.');
+
+                // Ensure modal is shown even on error to display error message
+                const previewModalElement = document.getElementById('datasetPreviewModal');
+                const previewModal = new bootstrap.Modal(previewModalElement);
+                previewModal.show();
+            }
+        }
+
+        // Update create dataset button visibility
+        function updateCreateDatasetButton() {
+            const selectedImages = document.querySelectorAll('.image-select:checked');
+            const createBtn = document.getElementById('createDatasetBtn');
+            createBtn.style.display = selectedImages.length > 0 ? 'block' : 'none';
+        }
+
+        // Create new dataset from selected images
+        document.getElementById('createDatasetBtn').addEventListener('click', async function() {
+            const selectedImages = document.querySelectorAll('.image-select:checked');
+            if (selectedImages.length === 0) {
+                alert('Vui lòng chọn ít nhất một ảnh');
+                return;
+            }
+
+            const datasetName = prompt('Nhập tên cho dataset mới:');
+            if (!datasetName) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('name', datasetName);
+                formData.append('description', 'Dataset được tạo từ ảnh đã chọn');
+                formData.append('method', 'manual');
+
+                // Show loading state
+                const createBtn = this;
+                const originalText = createBtn.innerHTML;
+                createBtn.disabled = true;
+                createBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo dataset...';
+
+                // Load all images and their labels
+                const imagePromises = Array.from(selectedImages).map(async (checkbox, index) => {
+                    const imageUrl = checkbox.dataset.imageUrl;
+                    const labelContent = checkbox.dataset.labelContent;
+                    
+                    try {
+                        const response = await fetch(imageUrl);
+                        const blob = await response.blob();
+                        formData.append('images', blob, `image_${index}.jpg`);
+                        if (labelContent) {
+                            formData.append(`label_${index}`, labelContent);
+                        }
+                    } catch (error) {
+                        console.error(`Error loading image ${index}:`, error);
+                        throw error;
+                    }
+                });
+
+                // Wait for all images to be loaded
+                await Promise.all(imagePromises);
+
+                // Upload the dataset
+                const result = await API.dataset.uploadImages(formData);
+                if (result.success) {
+                    alert('Dataset mới đã được tạo thành công!');
+                    loadDatasets();
+                    // Close the preview modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('datasetPreviewModal'));
+                    modal.hide();
+                } else {
+                    alert('Lỗi khi tạo dataset mới: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error creating dataset:', error);
+                alert('Lỗi khi tạo dataset mới: ' + error.message);
+            } finally {
+                // Reset button state
+                const createBtn = document.getElementById('createDatasetBtn');
+                createBtn.disabled = false;
+                createBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Tạo Dataset Mới từ Ảnh Đã Chọn';
+            }
+        });
+    </script>
+</body>
+</html>
+
+

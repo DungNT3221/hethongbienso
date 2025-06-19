@@ -99,6 +99,8 @@ services:
     environment:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - VEHICLE_SERVICE_URL=http://vehicle-service:3002
+      - TRAINREGION_SERVICE_URL=http://trainregion-service:3003
+      - MODELSTATS_SERVICE_URL=http://model-statistics-service:3004
       - JWT_SECRET=your_jwt_secret_key
       - PORT=3000
     volumes:
@@ -109,6 +111,8 @@ services:
     depends_on:
       - auth-service
       - vehicle-service
+      - trainregion-service
+      - model-statistics-service
     networks:
       - app-network
 
@@ -126,6 +130,83 @@ services:
     networks:
       - app-network
 
+  # MySQL for TrainRegion Service
+  trainregion-db:
+    image: mysql:8.0
+    container_name: trainregion-db
+    restart: always
+    ports:
+      - "13308:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=trainregion_db
+      - MYSQL_USER=trainregion_user
+      - MYSQL_PASSWORD=123456
+    volumes:
+      - trainregion-db-data:/var/lib/mysql
+      - ./database/trainregion-init.sql:/docker-entrypoint-initdb.d/trainregion-init.sql
+    networks:
+      - app-network
+
+  # MySQL for Model Statistics Service
+  modelstats-db:
+    image: mysql:8.0
+    container_name: modelstats-db
+    restart: always
+    ports:
+      - "13309:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=modelstats_db
+      - MYSQL_USER=modelstats_user
+      - MYSQL_PASSWORD=123456
+    volumes:
+      - modelstats-db-data:/var/lib/mysql
+      - ./database/modelstats-init.sql:/docker-entrypoint-initdb.d/modelstats-init.sql
+    networks:
+      - app-network
+
+  trainregion-service:
+    build: ./trainregion-service
+    container_name: trainregion-service
+    restart: always
+    ports:
+      - "3003:3003"
+    environment:
+      - DB_HOST=trainregion-db
+      - DB_USER=trainregion_user
+      - DB_PASS=123456
+      - DB_NAME=trainregion_db
+      - DB_PORT=3306
+      - MODELSTATS_SERVICE_URL=http://model-statistics-service:3004
+    volumes:
+      - ./trainregion-service/runs:/app/runs
+      - ./trainregion-service/uploads:/app/uploads
+    depends_on:
+      - trainregion-db
+      - model-statistics-service
+    networks:
+      - app-network
+
+  # Model Statistics Service
+  model-statistics-service:
+    build: ./model-statistics-service
+    container_name: model-statistics-service
+    restart: always
+    ports:
+      - "3004:3004"
+    environment:
+      - DB_HOST=modelstats-db
+      - DB_PORT=3306
+      - DB_USER=modelstats_user
+      - DB_PASSWORD=123456
+      - DB_NAME=modelstats_db
+      - PORT=3004
+    depends_on:
+      - modelstats-db
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -134,4 +215,8 @@ volumes:
   auth-db-data:
     driver: local
   vehicle-db-data:
+    driver: local
+  trainregion-db-data:
+    driver: local
+  modelstats-db-data:
     driver: local

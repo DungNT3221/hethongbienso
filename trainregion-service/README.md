@@ -18,7 +18,6 @@ python -c "from ultralytics import YOLO; YOLO('yolov8x.pt')"
 ### Yêu cầu
 
 - Python 3.8 hoặc mới hơn
-- CUDA (nếu muốn sử dụng GPU)
 - Label Studio (cho việc annotation dữ liệu)
 
 ### Thiết lập môi trường

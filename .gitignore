@@ -74,8 +74,23 @@ ENV/
 
 # YOLOv8 specific
 trainregion-service/runs/
+trainregion-service/runs/**/
 *.pt
-trainregion-service/yolov8x.pt
+!trainregion-service/yolov8x.pt
+trainregion-service/dataset/images/*
+trainregion-service/dataset/labels/*
+trainregion-service/uploads/*
+!trainregion-service/uploads/.gitkeep
+trainregion-service/weights/*
+!trainregion-service/weights/.gitkeep
+
+# Dataset and annotation files
+*.jpg
+*.jpeg
+*.png
+*.txt
+!requirements.txt
+!classes.txt
 
 # IDE files
 .idea/

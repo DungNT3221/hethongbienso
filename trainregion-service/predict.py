@@ -1,24 +1,28 @@
 from ultralytics import YOLO
 from PIL import Image
+import os
+
+# Lấy đường dẫn thư mục hiện tại của script
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Load a COCO-pretrained YOLOv8n model
-model = YOLO(r".\runs\detect\train2\weights\best.pt")
+model_path = os.path.join(script_dir, "runs", "detect", "train2", "weights", "best.pt")
+model = YOLO(model_path)
 
 # Run inference with the YOLOv8n model on the image
-results = model(r"./image.png", conf=0.9)
+image_path = os.path.join(script_dir, "image.png")
+results = model(image_path, conf=0.9)
 
 # Results
 for r in results:
-    # Print number of detected boxes
-    print(f"Detected {len(r.boxes)} license plates")
+    if r.boxes:
+        print(f"Detected {len(r.boxes)} license plates")
 
-    # Print all box coordinates
-    for i in range(len(r.boxes)):
-        box = r.boxes[i]
-        print(f"Box {i+1}: {box.xyxy[0].tolist()} - Confidence: {box.conf[0].item():.2f}")
-
-    # Plot results
-    im_array = r.plot()  # plot a BGR numpy array of predictions
-    im = Image.fromarray(im_array[..., ::-1])  # RGB PIL image
-    im.show()  # show image
-    im.save("result.png")  # save image
+        # Lưu ảnh kết quả
+        im_array = r.plot()
+        im = Image.fromarray(im_array[..., ::-1])
+        result_path = os.path.join(script_dir, "result.png")
+        im.save(result_path)
+        print(f"Result saved to: {result_path}")
+    else:
+        print("No license plate detected.")
